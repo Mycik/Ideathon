@@ -72,11 +72,11 @@
       }
 
       const decisions = (summary.decisions || []).map(d =>
-        `<li><strong>${esc(d.text)}</strong><br><span>Owner: ${esc(d.owner || "-")} | Due: ${esc(d.due_date || "-")} | Confidence: ${esc(d.confidence ?? "-")}</span></li>`
+        `<li><strong>${esc(d.text)}</strong><br><span>Owner: ${esc(d.owner || "-")} | Due: ${esc(d.due_date || "-")} | Confidence: ${esc(d.confidence ?? "-")}</span>${d.rationale ? `<div class="why-note">${esc(d.rationale)}</div>` : ""}</li>`
       ).join("");
 
       const actions = (summary.action_items || []).map(a =>
-        `<li><strong>${esc(a.task)}</strong><br><span>Owner: ${esc(a.owner || "-")} | Deadline: ${esc(a.deadline || "-")} | Priority: ${esc(a.priority || "-")} | Confidence: ${esc(a.confidence ?? "-")}</span></li>`
+        `<li><strong>${esc(a.task)}</strong><br><span>Owner: ${esc(a.owner || "-")} | Deadline: ${esc(a.deadline || "-")} | Priority: ${esc(a.priority || "-")} | Confidence: ${esc(a.confidence ?? "-")}</span>${a.source_quote ? `<div class="why-note">${esc(a.source_quote)}</div>` : ""}</li>`
       ).join("");
 
       const heard = (meeting.transcript?.segments || []).map(s =>

@@ -169,6 +169,17 @@ li span {
   font-size: 13px;
 }
 
+.why-note {
+  margin-top: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(96, 165, 250, 0.08);
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  color: #bfdbfe;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 pre {
   overflow-x: auto;
   overflow-y: auto;

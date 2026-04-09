@@ -24,7 +24,7 @@ class PostProcessor:
                 continue
             dedup_keys.add(task_key)
 
-            low_confidence = item.confidence < 0.7
+            low_confidence = item.confidence < 0.5 and not item.owner and not normalized_deadline
             cleaned_items.append(
                 ActionItem(
                     task=item.task,

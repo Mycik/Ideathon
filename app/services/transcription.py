@@ -43,7 +43,8 @@ class TranscriptionService:
                 )
             )
 
-        text = " ".join(s.text for s in segments).strip()
+        # Keep segment boundaries explicit so downstream extraction can summarize cleaner.
+        text = "\n".join(s.text for s in segments).strip()
         return TranscriptResult(
             text=text,
             segments=segments,

@@ -9,10 +9,18 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.models import MeetingRecord, ProcessMeetingRequest, PushToJiraRequest
+from app.models import (
+    MeetingRecord,
+    ProcessMeetingRequest,
+    PushToJiraRequest,
+    PushToNotionRequest,
+    PushToTeamsRequest,
+)
 from app.services.extraction import ExtractionService
 from app.services.jira import JiraConnector
+from app.services.notion import NotionConnector
 from app.services.postprocess import PostProcessor
+from app.services.teams import TeamsConnector
 from app.services.transcription import TranscriptionService
 from app.storage import MeetingStore
 
@@ -30,6 +38,8 @@ postprocessor = PostProcessor(
     }
 )
 jira_connector = JiraConnector()
+notion_connector = NotionConnector()
+teams_connector = TeamsConnector()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -143,3 +153,40 @@ def push_to_jira(request: PushToJiraRequest) -> dict:
             failed.append({"task": item.task, "error": str(exc)})
 
     return {"meeting_id": request.meeting_id, "pushed": pushed, "failed": failed}
+
+
+@app.post("/integrations/notion/push")
+def push_to_notion(request: PushToNotionRequest) -> dict:
+    meeting = store.load(request.meeting_id)
+    if not meeting or not meeting.summary:
+        raise HTTPException(status_code=404, detail="Processed meeting not found")
+
+    pushed = []
+    failed = []
+    for item in meeting.summary.action_items:
+        try:
+            response = notion_connector.push_action_item(item=item, notion=request.notion)
+            pushed.append(
+                {
+                    "task": item.task,
+                    "page_id": response.get("id"),
+                    "url": response.get("url"),
+                }
+            )
+        except Exception as exc:
+            failed.append({"task": item.task, "error": str(exc)})
+
+    return {"meeting_id": request.meeting_id, "pushed": pushed, "failed": failed}
+
+
+@app.post("/integrations/teams/push")
+def push_to_teams(request: PushToTeamsRequest) -> dict:
+    meeting = store.load(request.meeting_id)
+    if not meeting or not meeting.summary:
+        raise HTTPException(status_code=404, detail="Processed meeting not found")
+
+    try:
+        result = teams_connector.push_summary(items=meeting.summary.action_items, teams=request.teams)
+        return {"meeting_id": request.meeting_id, **result}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Teams push failed: {exc}") from exc

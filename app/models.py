@@ -72,5 +72,25 @@ class PushToJiraRequest(BaseModel):
     labels: list[str] = Field(default_factory=lambda: ["meetingiq"])
 
 
+class NotionConfig(BaseModel):
+    api_key: str
+    database_id: str
+
+
+class PushToNotionRequest(BaseModel):
+    meeting_id: str
+    notion: NotionConfig
+
+
+class TeamsConfig(BaseModel):
+    webhook_url: str
+    title: str = "MeetingIQ Action Items"
+
+
+class PushToTeamsRequest(BaseModel):
+    meeting_id: str
+    teams: TeamsConfig
+
+
 class ProcessMeetingRequest(BaseModel):
     delete_source_after_processing: bool = False
