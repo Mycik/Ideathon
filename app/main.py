@@ -4,7 +4,10 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 from app.models import MeetingRecord, PushToJiraRequest
 from app.services.extraction import ExtractionService
@@ -14,6 +17,8 @@ from app.services.transcription import TranscriptionService
 from app.storage import MeetingStore
 
 app = FastAPI(title="MeetingIQ API", version="0.1.0")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+templates = Jinja2Templates(directory="app/templates")
 
 store = MeetingStore(base_path="data")
 transcriber = TranscriptionService()
@@ -25,6 +30,11 @@ postprocessor = PostProcessor(
     }
 )
 jira_connector = JiraConnector()
+
+
+@app.get("/", response_class=HTMLResponse)
+def index(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request=request, name="index.html", context={})
 
 
 @app.get("/health")

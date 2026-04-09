@@ -1,0 +1,148 @@
+:root {
+  --bg: #070b17;
+  --bg-soft: #101a33;
+  --card: #0f172a;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --accent: #60a5fa;
+  --accent-2: #22d3ee;
+  --success: #34d399;
+  --error: #fb7185;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, Segoe UI, Arial, sans-serif;
+  background: radial-gradient(circle at top, var(--bg-soft), var(--bg));
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 32px 20px 50px;
+  display: grid;
+  gap: 18px;
+}
+
+.card {
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.35);
+}
+
+.hero h1 {
+  margin: 10px 0 8px;
+  font-size: 28px;
+}
+
+.badge {
+  margin: 0;
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(96, 165, 250, 0.15);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--muted);
+}
+
+.upload-form {
+  display: grid;
+  gap: 12px;
+}
+
+.file-label {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+input[type="file"] {
+  width: 100%;
+  background: #0b1224;
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+button {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  color: #031326;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status {
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+
+.status.info {
+  color: var(--muted);
+}
+
+.status.success {
+  color: var(--success);
+}
+
+.status.error {
+  color: var(--error);
+}
+
+.result-card h2 {
+  margin-top: 0;
+}
+
+.result-empty {
+  color: var(--muted);
+}
+
+.result-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+li {
+  margin: 0 0 10px;
+}
+
+li span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+pre {
+  overflow-x: auto;
+  background: #0a1020;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 10px;
+  padding: 12px;
+  color: #dbeafe;
+  line-height: 1.45;
+}

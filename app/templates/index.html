@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MeetingIQ</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="card hero">
+      <p class="badge">MeetingIQ MVP</p>
+      <h1>Upload a meeting recording and get a structured summary</h1>
+      <p class="subtitle">Decisions, owners, deadlines, and action items in one place</p>
+    </section>
+
+    <section class="card">
+      <form id="upload-form" class="upload-form">
+        <label for="file-input" class="file-label">Meeting file (video/audio)</label>
+        <input id="file-input" name="file" type="file" accept="audio/*,video/*" required />
+        <button id="submit-btn" type="submit">Process meeting</button>
+      </form>
+      <p id="status" class="status"></p>
+    </section>
+
+    <section class="card result-card">
+      <h2>Result</h2>
+      <div id="result" class="result-empty">No data yet. Upload a file to get started.</div>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("upload-form");
+    const fileInput = document.getElementById("file-input");
+    const statusEl = document.getElementById("status");
+    const resultEl = document.getElementById("result");
+    const submitBtn = document.getElementById("submit-btn");
+
+    function setStatus(text, kind = "info") {
+      statusEl.textContent = text;
+      statusEl.className = `status ${kind}`;
+    }
+
+    function esc(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      })[ch]);
+    }
+
+    function renderMeeting(meeting) {
+      const summary = meeting.summary;
+      if (!summary) {
+        resultEl.innerHTML = "<p>Summary is not ready yet.</p>";
+        return;
+      }
+
+      const decisions = (summary.decisions || []).map(d =>
+        `<li><strong>${esc(d.text)}</strong><br><span>Owner: ${esc(d.owner || "-")} | Due: ${esc(d.due_date || "-")} | Confidence: ${esc(d.confidence ?? "-")}</span></li>`
+      ).join("");
+
+      const actions = (summary.action_items || []).map(a =>
+        `<li><strong>${esc(a.task)}</strong><br><span>Owner: ${esc(a.owner || "-")} | Deadline: ${esc(a.deadline || "-")} | Priority: ${esc(a.priority || "-")} | Confidence: ${esc(a.confidence ?? "-")}</span></li>`
+      ).join("");
+
+      resultEl.innerHTML = `
+        <div class="result-grid">
+          <div>
+            <h3>Decisions</h3>
+            <ul>${decisions || "<li>No data</li>"}</ul>
+          </div>
+          <div>
+            <h3>Action Items</h3>
+            <ul>${actions || "<li>No data</li>"}</ul>
+          </div>
+        </div>
+        <h3>Raw Transcript</h3>
+        <pre>${esc(meeting.transcript?.text || "No data")}</pre>
+      `;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const file = fileInput.files[0];
+      if (!file) {
+        setStatus("Please choose a file", "error");
+        return;
+      }
+
+      try {
+        submitBtn.disabled = true;
+        setStatus("Uploading file...", "info");
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const uploadRes = await fetch("/meetings/upload", { method: "POST", body: formData });
+        if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
+        const { meeting_id } = await uploadRes.json();
+
+        setStatus("Processing transcript and summary...", "info");
+        const processRes = await fetch(`/meetings/${meeting_id}/process`, { method: "POST" });
+        if (!processRes.ok) throw new Error(`Processing failed: ${processRes.status}`);
+
+        const meetingRes = await fetch(`/meetings/${meeting_id}`);
+        if (!meetingRes.ok) throw new Error(`Fetch result failed: ${meetingRes.status}`);
+        const meeting = await meetingRes.json();
+
+        renderMeeting(meeting);
+        setStatus("Done. Summary generated.", "success");
+      } catch (error) {
+        setStatus(`Error: ${error.message}`, "error");
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
