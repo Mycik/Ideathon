@@ -1,69 +1,62 @@
 from __future__ import annotations
 
-import json
-import os
+import re
 
-from openai import OpenAI
-
-from app.models import MeetingSummary
+from app.models import ActionItem, Decision, MeetingSummary
 
 
 class ExtractionService:
     def __init__(self) -> None:
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
+        pass
 
-    def extract_summary(self, transcript_text: str, title: str = "Meeting") -> MeetingSummary:
-        if not self.client:
-            return self._mock_extract(transcript_text, title)
+    def extract_summary(
+        self,
+        transcript_text: str,
+        title: str = "Meeting",
+        output_language: str | None = None,
+    ) -> MeetingSummary:
+        # Local, rule-based extraction (no third-party model calls).
+        sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", transcript_text) if s.strip()]
+        decisions: list[Decision] = []
+        action_items: list[ActionItem] = []
+        open_questions: list[str] = []
 
-        system_prompt = (
-            "You extract structured meeting summaries. "
-            "Return only valid JSON with keys: meeting_title, date, participants, "
-            "decisions, action_items, risks, open_questions. "
-            "Every action item must include: task, owner, deadline, priority, source_quote, confidence."
-        )
-        user_prompt = f"Meeting title: {title}\nTranscript:\n{transcript_text}"
+        decision_markers = ["decide", "decision", "approved", "agreed", "вирішили", "решили"]
+        action_markers = ["will", "todo", "action", "need to", "повинен", "нужно", "має"]
 
-        completion = self.client.chat.completions.create(
-            model=os.getenv("LLM_MODEL", "gpt-4o-mini"),
-            temperature=0,
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
+        for sentence in sentences:
+            lower = sentence.lower()
+            if any(marker in lower for marker in decision_markers):
+                decisions.append(Decision(text=sentence[:280], confidence=0.72))
+            if any(marker in lower for marker in action_markers):
+                action_items.append(
+                    ActionItem(
+                        task=sentence[:280],
+                        priority="medium",
+                        source_quote=sentence[:220],
+                        confidence=0.68,
+                    )
+                )
+            if sentence.endswith("?"):
+                open_questions.append(sentence[:280])
 
-        content = completion.choices[0].message.content or "{}"
-        payload = json.loads(content)
-        payload.setdefault("meeting_title", title)
-        return MeetingSummary.model_validate(payload)
+        if not decisions and sentences:
+            decisions.append(Decision(text=sentences[0][:280], confidence=0.55))
+        if not action_items and len(sentences) > 1:
+            action_items.append(
+                ActionItem(
+                    task=sentences[1][:280],
+                    priority="medium",
+                    source_quote=sentences[1][:220],
+                    confidence=0.52,
+                )
+            )
 
-    def _mock_extract(self, transcript_text: str, title: str) -> MeetingSummary:
-        return MeetingSummary.model_validate(
-            {
-                "meeting_title": title,
-                "participants": ["Alex", "Sam"],
-                "decisions": [
-                    {
-                        "text": "Launch beta next Friday",
-                        "rationale": "Customer pilot demand",
-                        "owner": "Alex",
-                        "due_date": "next Friday",
-                        "confidence": 0.88,
-                    }
-                ],
-                "action_items": [
-                    {
-                        "task": "Prepare Jira tickets for beta checklist",
-                        "owner": "Alex",
-                        "deadline": "Tuesday",
-                        "priority": "high",
-                        "source_quote": transcript_text[:180],
-                        "confidence": 0.84,
-                    }
-                ],
-                "risks": ["Timeline may slip if QA is delayed"],
-                "open_questions": ["Do we include two enterprise clients in beta?"],
-            }
+        return MeetingSummary(
+            meeting_title=title,
+            participants=[],
+            decisions=decisions[:8],
+            action_items=action_items[:12],
+            risks=[],
+            open_questions=open_questions[:8],
         )

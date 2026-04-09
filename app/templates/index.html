@@ -18,6 +18,11 @@
       <form id="upload-form" class="upload-form">
         <label for="file-input" class="file-label">Meeting file (video/audio)</label>
         <input id="file-input" name="file" type="file" accept="audio/*,video/*" required />
+        <p class="hint">Local-only mode is enabled. Audio and summary language are auto-detected.</p>
+        <label class="checkbox">
+          <input id="delete-source" type="checkbox" />
+          <span>Delete source video after processing</span>
+        </label>
         <button id="submit-btn" type="submit">Process meeting</button>
       </form>
       <p id="status" class="status"></p>
@@ -35,6 +40,7 @@
     const statusEl = document.getElementById("status");
     const resultEl = document.getElementById("result");
     const submitBtn = document.getElementById("submit-btn");
+    const deleteSourceEl = document.getElementById("delete-source");
 
     function setStatus(text, kind = "info") {
       statusEl.textContent = text;
@@ -49,6 +55,13 @@
         '"': "&quot;",
         "'": "&#039;"
       })[ch]);
+    }
+
+    function formatTs(value) {
+      const total = Number(value || 0);
+      const minutes = Math.floor(total / 60).toString().padStart(2, "0");
+      const seconds = Math.floor(total % 60).toString().padStart(2, "0");
+      return `${minutes}:${seconds}`;
     }
 
     function renderMeeting(meeting) {
@@ -66,19 +79,37 @@
         `<li><strong>${esc(a.task)}</strong><br><span>Owner: ${esc(a.owner || "-")} | Deadline: ${esc(a.deadline || "-")} | Priority: ${esc(a.priority || "-")} | Confidence: ${esc(a.confidence ?? "-")}</span></li>`
       ).join("");
 
+      const heard = (meeting.transcript?.segments || []).map(s =>
+        `<div class="heard-item">
+          <div class="heard-meta">
+            <span>${formatTs(s.start)} - ${formatTs(s.end)}</span>
+            <span>${esc(s.speaker || "Speaker")}</span>
+          </div>
+          <p>${esc(s.text || "")}</p>
+        </div>`
+      ).join("");
+
       resultEl.innerHTML = `
         <div class="result-grid">
-          <div>
+          <div class="panel">
             <h3>Decisions</h3>
             <ul>${decisions || "<li>No data</li>"}</ul>
           </div>
-          <div>
+          <div class="panel">
             <h3>Action Items</h3>
             <ul>${actions || "<li>No data</li>"}</ul>
           </div>
         </div>
-        <h3>Raw Transcript</h3>
-        <pre>${esc(meeting.transcript?.text || "No data")}</pre>
+        <div class="dual-sections">
+          <section class="panel">
+            <h3>What MeetingIQ Heard</h3>
+            <div class="heard-list">${heard || "<p class='result-empty'>No timestamped segments available.</p>"}</div>
+          </section>
+          <section class="panel">
+            <h3>Full Transcript</h3>
+            <pre>${esc(meeting.transcript?.text || "No data")}</pre>
+          </section>
+        </div>
       `;
     }
 
@@ -102,7 +133,15 @@
         const { meeting_id } = await uploadRes.json();
 
         setStatus("Processing transcript and summary...", "info");
-        const processRes = await fetch(`/meetings/${meeting_id}/process`, { method: "POST" });
+        const processPayload = {
+          delete_source_after_processing: deleteSourceEl.checked
+        };
+
+        const processRes = await fetch(`/meetings/${meeting_id}/process`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(processPayload)
+        });
         if (!processRes.ok) throw new Error(`Processing failed: ${processRes.status}`);
 
         const meetingRes = await fetch(`/meetings/${meeting_id}`);

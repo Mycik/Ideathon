@@ -63,6 +63,20 @@ body {
   gap: 12px;
 }
 
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .file-label {
   color: var(--muted);
   font-size: 14px;
@@ -121,6 +135,24 @@ button:disabled {
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  margin-bottom: 16px;
+}
+
+.dual-sections {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.panel {
+  background: rgba(10, 16, 32, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.panel h3 {
+  margin: 0 0 10px;
 }
 
 ul {
@@ -139,10 +171,41 @@ li span {
 
 pre {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: 380px;
   background: #0a1020;
   border: 1px solid rgba(148, 163, 184, 0.15);
   border-radius: 10px;
   padding: 12px;
   color: #dbeafe;
   line-height: 1.45;
+}
+
+.heard-list {
+  display: grid;
+  gap: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.heard-item {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  background: #0a1020;
+  padding: 10px 12px;
+}
+
+.heard-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.heard-item p {
+  margin: 0;
+  color: #dbeafe;
 }

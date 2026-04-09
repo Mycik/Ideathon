@@ -3,46 +3,52 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from openai import OpenAI
-
 from app.models import TranscriptResult, TranscriptSegment
 
 
 class TranscriptionService:
     def __init__(self) -> None:
-        self.provider = os.getenv("TRANSCRIPTION_PROVIDER", "mock").lower()
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
+        self.provider = "local"
 
-    def transcribe(self, audio_file: Path) -> TranscriptResult:
-        if self.provider == "openai" and self.client:
-            return self._openai_transcribe(audio_file)
-        return self._mock_transcribe(audio_file)
+    def transcribe(
+        self,
+        audio_file: Path,
+        language: str | None = None,
+    ) -> TranscriptResult:
+        try:
+            return self._local_transcribe(audio_file, language=language)
+        except Exception:
+            return self._mock_transcribe(audio_file)
 
-    def _openai_transcribe(self, audio_file: Path) -> TranscriptResult:
-        with audio_file.open("rb") as f:
-            transcript = self.client.audio.transcriptions.create(
-                model="whisper-1",
-                file=f,
-                response_format="verbose_json",
-            )
+    def _local_transcribe(self, audio_file: Path, language: str | None = None) -> TranscriptResult:
+        # Free, self-hosted transcription using faster-whisper.
+        from faster_whisper import WhisperModel
 
-        segments = []
-        raw_segments = getattr(transcript, "segments", None) or []
-        for item in raw_segments:
+        model_name = os.getenv("LOCAL_WHISPER_MODEL", "small")
+        compute_type = os.getenv("LOCAL_WHISPER_COMPUTE_TYPE", "int8")
+        model = WhisperModel(model_name, device="cpu", compute_type=compute_type)
+        kwargs = {"vad_filter": True}
+        if language:
+            kwargs["language"] = language
+        segments_iter, info = model.transcribe(str(audio_file), **kwargs)
+
+        segments: list[TranscriptSegment] = []
+        for segment in segments_iter:
             segments.append(
                 TranscriptSegment(
-                    start=float(item.get("start", 0)),
-                    end=float(item.get("end", 0)),
-                    speaker=item.get("speaker"),  # If provider supports diarization.
-                    text=item.get("text", ""),
+                    start=float(segment.start),
+                    end=float(segment.end),
+                    speaker=None,  # Local Whisper does not provide diarization by default.
+                    text=segment.text.strip(),
                 )
             )
 
+        text = " ".join(s.text for s in segments).strip()
         return TranscriptResult(
-            text=getattr(transcript, "text", ""),
+            text=text,
             segments=segments,
-            language=getattr(transcript, "language", None),
-            provider="openai-whisper",
+            language=getattr(info, "language", None),
+            provider=f"local-faster-whisper:{model_name}",
         )
 
     def _mock_transcribe(self, audio_file: Path) -> TranscriptResult:

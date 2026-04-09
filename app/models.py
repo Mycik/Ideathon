@@ -70,3 +70,7 @@ class PushToJiraRequest(BaseModel):
     jira: JiraConfig
     issue_type: str = "Task"
     labels: list[str] = Field(default_factory=lambda: ["meetingiq"])
+
+
+class ProcessMeetingRequest(BaseModel):
+    delete_source_after_processing: bool = False

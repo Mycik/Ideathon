@@ -4,12 +4,12 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import Body, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.models import MeetingRecord, PushToJiraRequest
+from app.models import MeetingRecord, ProcessMeetingRequest, PushToJiraRequest
 from app.services.extraction import ExtractionService
 from app.services.jira import JiraConnector
 from app.services.postprocess import PostProcessor
@@ -66,7 +66,7 @@ async def upload_meeting(file: UploadFile = File(...)) -> dict:
 
 
 @app.post("/meetings/{meeting_id}/process")
-def process_meeting(meeting_id: str) -> dict:
+def process_meeting(meeting_id: str, request: ProcessMeetingRequest | None = Body(default=None)) -> dict:
     meeting = store.load(meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
@@ -75,13 +75,28 @@ def process_meeting(meeting_id: str) -> dict:
     if not audio_path.exists():
         raise HTTPException(status_code=400, detail="Audio file is missing")
 
-    transcript = transcriber.transcribe(audio_path)
-    summary = extractor.extract_summary(transcript.text, title=meeting.filename)
+    process_request = request or ProcessMeetingRequest()
+
+    transcript = transcriber.transcribe(
+        audio_file=audio_path,
+        language=None,  # Auto-detect language from audio.
+    )
+    summary = extractor.extract_summary(
+        transcript.text,
+        title=meeting.filename,
+        output_language=transcript.language,  # Keep summary language aligned automatically.
+    )
     normalized_summary, owner_map = postprocessor.normalize(summary)
 
     meeting.transcript = transcript
     meeting.summary = normalized_summary
     meeting.normalized_owner_map = owner_map
+    meeting.metadata["processing"] = process_request.model_dump()
+
+    if process_request.delete_source_after_processing and audio_path.exists():
+        audio_path.unlink()
+        meeting.metadata["audio_deleted_after_processing"] = True
+
     store.save(meeting)
 
     return {
